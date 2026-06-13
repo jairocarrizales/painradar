@@ -1,11 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Permite usar la app en modo dev desde otros equipos de la red local
-  // (sin esto, Next bloquea recursos al abrirla desde otra IP). Para multi-equipo,
-  // lo MÁS estable es correr en producción (npm run build && npm run start).
-  // Si tu IP cambia, agrégala aquí.
-  allowedDevOrigins: ["192.168.100.2"],
+  // Para usar la app en modo DEV desde otros equipos de la red, cada usuario pone su
+  // IP local en su .env.local:  LAN_IP=192.168.x.x  (varias separadas por coma).
+  // En modo PRODUCCIÓN (iniciar-en-red.bat) NO hace falta nada de esto.
+  allowedDevOrigins: (process.env.LAN_IP ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
 };
 
 export default nextConfig;
