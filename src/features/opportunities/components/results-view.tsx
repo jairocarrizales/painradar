@@ -192,13 +192,8 @@ export function ResultsView({ niche, recency, lang, sources }: ResultsViewProps)
     );
   }
 
-  const { opportunities, provider, cached, durationSec } = state;
-  const providerLabel =
-    provider === "claude-agent"
-      ? "investigación web en vivo"
-      : provider === "mock"
-        ? "datos de demostración"
-        : "OpenRouter";
+  const { opportunities, cached, durationSec } = state;
+  const providerLabel = "investigación web en vivo";
 
   return (
     <>

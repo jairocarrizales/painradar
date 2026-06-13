@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { runSearch } from "@/features/search/pipeline";
-import { aiProvider } from "@/shared/lib/utils";
 import { getCachedSearch, setCachedSearch } from "@/shared/lib/db";
 import { DEFAULT_SOURCES } from "@/features/search/options";
 
@@ -40,17 +39,23 @@ export async function GET(request: NextRequest) {
       { recency: recency as never, language, sources },
       request.signal, // cancelling the request stops the agent
     );
-    const provider = aiProvider();
-    setCachedSearch(niche, recency, language, sources, provider, result.opportunities);
+    setCachedSearch(niche, recency, language, sources, "claude-agent", result.opportunities);
     return NextResponse.json({
       niche: result.niche,
       language,
-      provider,
+      provider: "claude-agent",
       opportunities: result.opportunities,
       cached: false,
     });
   } catch (err) {
+    if (request.signal.aborted) {
+      return NextResponse.json({ error: "Búsqueda cancelada" }, { status: 499 });
+    }
     console.error("[PainRadar] /api/radar falló:", err);
-    return NextResponse.json({ error: "La búsqueda falló" }, { status: 500 });
+    const message =
+      err instanceof Error && err.message
+        ? err.message
+        : "La búsqueda falló. Verifica tu token y tu conexión, e intenta de nuevo.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

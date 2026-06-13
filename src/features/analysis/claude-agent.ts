@@ -173,9 +173,20 @@ export async function analyzeWithClaudeAgent(
   }
 
   const source = finalText || lastAssistantText;
-  if (!source) throw new Error("Agent returned no result");
+  if (!source) {
+    throw new Error(
+      "El agente no devolvió resultados (puede haberse quedado sin tiempo). Intenta de nuevo.",
+    );
+  }
 
-  const parsed = AgentOutputSchema.parse(extractJson(source));
+  let parsed;
+  try {
+    parsed = AgentOutputSchema.parse(extractJson(source));
+  } catch {
+    throw new Error(
+      "El agente respondió pero no se pudo leer el resultado. Intenta de nuevo o cambia el nicho.",
+    );
+  }
   const lang = filters.language;
 
   const opportunities: Opportunity[] = parsed.opportunities.map((o, i) => {
