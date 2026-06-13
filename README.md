@@ -127,7 +127,8 @@ Solo un equipo corre el servidor; los demás (otra PC, Mac, celular en la misma 
 en el navegador con la **IP del equipo servidor**: `http://TU-IP:3000`. Todos comparten la
 **misma base de datos** (favoritos/historial) porque hay un solo servidor.
 
-- **Recomendado:** en el equipo servidor usa **`iniciar-en-red.bat`** (modo producción). Es lo
+- **Recomendado:** en el equipo servidor usa **`iniciar-en-red.bat`** (Windows) o
+  **`iniciar-en-red.command`** (Mac) — modo producción. Es lo
   más estable para varios equipos y **no necesitas configurar ninguna IP**.
 - Si prefieres el **modo desarrollo** en red, pon **tu** IP local en tu `.env.local`:
   `LAN_IP=192.168.x.x` (la ves con `ipconfig` en Windows o `ifconfig` en Mac/Linux).

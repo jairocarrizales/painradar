@@ -1,0 +1,6 @@
+# Scripts de Mac/Linux: SIEMPRE LF (CRLF rompe el shebang #!/bin/bash)
+*.command text eol=lf
+*.sh text eol=lf
+
+# Scripts de Windows: CRLF
+*.bat text eol=crlf

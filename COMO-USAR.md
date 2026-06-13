@@ -31,8 +31,11 @@ Claude Code**, necesitas pegar tu llave personal una vez:
 
 ## 2) Iniciar PainRadar cada día
 
-**La forma fácil:** haz **doble clic** en el archivo **`iniciar-painradar.bat`**.
-- Se abre una ventana negra (el servidor) — **no la cierres mientras uses la app**.
+**La forma fácil:** haz **doble clic** en el archivo de inicio:
+- **Windows:** `iniciar-painradar.bat`
+- **Mac:** `iniciar-painradar.command` (la 1ª vez: clic derecho → **Abrir**, para saltar el aviso de seguridad)
+
+- Se abre una ventana (el servidor) — **no la cierres mientras uses la app**.
 - A los ~6 segundos se abre solo tu navegador en **http://localhost:3000**.
 
 **La forma manual** (si prefieres): abre una terminal en la carpeta y escribe:
