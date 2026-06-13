@@ -65,18 +65,9 @@ construir una app que nadie quiere.
 - Coleccion de favoritas guardadas (por usuario)
 - Exportar oportunidades a PDF
 
-**Storage (Supabase tables sugeridas):**
-- `profiles`: usuario/maker (extiende auth.users)
-- `searches`: cada busqueda bajo demanda (nicho/keyword, filtros, estado, fecha, user_id)
-- `sources`: items crudos recolectados (plataforma reddit/youtube, url, autor, texto,
-  upvotes/likes, fecha, search_id)
-- `opportunities`: oportunidad analizada (problema resumido, scores dolor/frecuencia/hueco,
-  idea de app sugerida, search_id)
-- `opportunity_citations`: citas textuales que respaldan una oportunidad (texto, url fuente,
-  opportunity_id, source_id)
-- `favorites`: oportunidades guardadas por el maker (user_id, opportunity_id)
-- `exports`: registro de PDFs generados (opcional; user_id, payload, fecha)
-- `events`: instrumentacion de funnel (signup, search_run, opportunity_saved, pdf_exported)
+**Storage (implementacion final: SQLite local, sin login):**
+- `favorites`: oportunidades guardadas
+- `search_cache`: resultados por (nicho, recencia, idioma, fuentes) — tambien sirve de historial
 
 ## 5. KPI de Exito
 
@@ -92,7 +83,6 @@ dias a menos de 10 minutos**.
 ### Features a Implementar (Feature-First)
 ```
 src/features/
-├── auth/            # Autenticacion Email/Password (Supabase)
 ├── search/          # Iniciar busqueda bajo demanda: elegir nicho/keyword/subreddit + filtros
 ├── ingestion/       # Recolectores Reddit API + YouTube API -> tabla sources
 ├── analysis/        # Pipeline IA: agrupar, resumir, rankear (dolor/frecuencia/hueco) + idea de app
@@ -107,7 +97,7 @@ src/features/
 
 ### Stack Confirmado
 - **Frontend:** Next.js 16 + React 19 + TypeScript + Tailwind 3.4 + shadcn/ui
-- **Backend:** Supabase (Auth + Database + Storage + RLS)
+- **Backend:** SQLite local (node:sqlite) — favoritos, cache de busquedas e historial. Sin login.
 - **AI Engine (principal):** Claude Agent SDK LOCAL (`AI_PROVIDER=claude-agent`) con la
   suscripcion Claude del propio usuario — sin API key. El agente web-busca Reddit/YouTube
   el mismo (WebSearch/WebFetch), rankea y devuelve JSON. Fallback a mock si falla.
@@ -116,7 +106,7 @@ src/features/
 - **Validacion:** Zod
 - **State:** Zustand (si necesario)
 - **PDF:** generacion server-side (@react-pdf/renderer)
-- **MCPs:** Next.js DevTools + Playwright + Supabase
+- **MCPs:** Next.js DevTools + Playwright
 
 ### Decision de Arquitectura: motor agente local-first (2026-06-13)
 - PainRadar corre LOCAL en la maquina del usuario e invoca un agente Claude autenticado con
@@ -134,13 +124,12 @@ src/features/
   - `favorites`: oportunidades guardadas.
   - `search_cache`: resultados por (nicho, recency) — una corrida del agente (~2-4 min) se
     cachea, asi reabrir un nicho es instantaneo; `?refresh=1` fuerza re-correr.
-- Supabase queda como opcion futura (si algun dia es multi-usuario hospedado); por ahora no se usa.
+- No hay backend en la nube: toda la persistencia es local (SQLite).
 
 ### Proximos Pasos
 1. [ ] Setup proyecto base
-2. [ ] Configurar Supabase
-3. [ ] Implementar Auth (Email/Password)
-4. [ ] Feature: search (iniciar busqueda bajo demanda)
+2. [ ] Configurar SQLite local (favoritos + cache)
+3. [ ] Feature: search (iniciar busqueda bajo demanda)
 5. [ ] Feature: ingestion (Reddit + YouTube)
 6. [ ] Feature: analysis (pipeline IA rankeo + idea de app)
 7. [ ] Feature: opportunities (dashboard + detalle con citas/links)
