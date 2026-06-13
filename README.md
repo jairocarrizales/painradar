@@ -81,9 +81,9 @@ cae automáticamente a `mock` para no romperse.
 ## 🚀 Inicio rápido
 
 ```bash
-npm install
-cp .env.example .env.local      # 'mock' funciona sin ninguna llave
-npm run dev
+npm install                     # instala dependencias (incluye next)
+cp .env.example .env.local      # crea tu config — 'mock' funciona sin ninguna llave
+npm run dev                     # arranca en http://localhost:3000
 ```
 
 Abre **http://localhost:3000** — entra directo a la búsqueda. Elige idioma y fuentes, escribe un
@@ -91,6 +91,36 @@ nicho (o explóralo en el catálogo) y pulsa **Buscar**.
 
 > En modo `mock` los resultados son instantáneos y de demostración. Para resultados reales, usa
 > el modo agente 👇.
+
+### 📦 Tras clonar el repo (en otra PC o carpeta)
+
+Al clonar, Git **no** incluye estas 3 cosas (es a propósito) y por eso debes prepararlas **una vez**:
+
+| No viene al clonar | Por qué | Qué hacer |
+|--------------------|---------|-----------|
+| `node_modules/` | Pesa cientos de MB | `npm install` |
+| `.env.local` (tu token) | Es secreto/privado | Copiar de otra carpeta o crearlo (ver abajo) |
+| `data/painradar.db` | Son tus datos locales | Se crea solo al usar la app (empieza vacío) |
+
+Pasos:
+
+```bash
+cd painradar
+npm install                     # 1) dependencias
+
+# 2) tu config con el token:
+#    a) copiar la de otra carpeta:
+copy "C:\ruta\al\otro\painradar\.env.local" .env.local      # (PowerShell: Copy-Item ...)
+#    b) o crearla desde cero:
+cp .env.example .env.local      # y luego pega tu token (ver SETUP-AGENT.md)
+
+npm run dev                     # 3) correr
+```
+
+> Si el puerto 3000 está ocupado por otra copia, la terminal usará 3001 (abre esa URL), o cierra
+> la otra primero. Cada carpeta tiene su propia base de datos (favoritos/historial independientes).
+
+> El repo incluye un `.npmrc` con `legacy-peer-deps=true`, así que `npm install` funciona sin flags.
 
 ---
 
