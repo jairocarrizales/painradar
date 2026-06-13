@@ -6,7 +6,7 @@ API key) para buscar quejas reales de usuarios en múltiples fuentes e idiomas y
 
 > 🧍 Herramienta **personal, local, de un solo usuario**. Sin login. Tus datos se quedan en tu
 > máquina (SQLite). Pensada para que **tú** descubras tu próxima app, no para venderse como SaaS
-> (ver [Términos](#-nota-legal-uso-personal)).
+> (ver [Legalidad](#-es-permitido-usarlo-con-tu-cuenta-personal-legalidad)).
 
 ---
 
@@ -21,11 +21,10 @@ API key) para buscar quejas reales de usuarios en múltiples fuentes e idiomas y
 - [Arquitectura](#-arquitectura)
 - [API interna](#-api-interna)
 - [Persistencia (SQLite)](#-persistencia-sqlite)
-- [Cómo se rankea](#-cómo-se-rankea)
+- [Cómo se calcula la puntuación](#-cómo-se-calcula-la-puntuación)
 - [Comandos](#-comandos)
 - [Stack](#-stack)
-- [Nota legal: uso personal](#-nota-legal-uso-personal)
-- [Ramas del repo](#-ramas-del-repo)
+- [Legalidad: uso personal](#-es-permitido-usarlo-con-tu-cuenta-personal-legalidad)
 
 ---
 
@@ -196,8 +195,8 @@ src/
 ```
 
 **Flujo de una búsqueda:** `dashboard` → `ResultsView` llama a `GET /api/radar` →
-`runSearch()` (pipeline) → `collectComplaints()` + `analyze()` (elige proveedor) →
-en modo agente, `analyzeWithClaudeAgent()` busca y rankea → se cachea en SQLite → se renderiza.
+`runSearch()` (pipeline) → `analyze()` → en modo agente, `analyzeWithClaudeAgent()` busca en la
+web y rankea (o `mock` como fallback) → se cachea en SQLite → se renderiza.
 
 ---
 
@@ -323,12 +322,3 @@ Claude Agent SDK con autenticación por suscripción (BYO-subscription)**.*
 [Use Claude Code with your Pro or Max plan](https://support.claude.com/en/articles/11145838-use-claude-code-with-your-pro-or-max-plan) ·
 [Consumer Terms](https://www.anthropic.com/legal/consumer-terms) ·
 [Usage Policy](https://www.anthropic.com/legal/aup)
-
----
-
-## 🌿 Ramas del repo
-
-| Rama | Contenido |
-|------|-----------|
-| **`PainRadar`** | Solo la app PainRadar (esta rama, limpia). |
-| **`main`** | Respaldo: PainRadar **+** el framework SaaS Factory con el que se construyó. |
