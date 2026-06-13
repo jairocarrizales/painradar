@@ -1,6 +1,5 @@
 import type { Opportunity, SearchFilters } from "@/shared/types/domain";
 import { SearchFiltersSchema } from "@/shared/types/domain";
-import { collectComplaints } from "@/features/ingestion/collect";
 import { analyze } from "@/features/analysis/analyze";
 
 export interface SearchResult {
@@ -10,8 +9,8 @@ export interface SearchResult {
 }
 
 /**
- * Run a full on-demand search: ingest complaints, analyze + rank into
- * opportunities. Deterministic in mock mode (safe to re-run from the niche).
+ * Run a full on-demand search: the Claude agent searches the web and ranks
+ * opportunities (or mock data as fallback). Deterministic in mock mode.
  */
 export async function runSearch(
   niche: string,
@@ -19,7 +18,6 @@ export async function runSearch(
   signal?: AbortSignal,
 ): Promise<SearchResult> {
   const filters = SearchFiltersSchema.parse(rawFilters ?? {});
-  const sources = await collectComplaints(niche, filters);
-  const opportunities = await analyze(niche, sources, filters, signal);
+  const opportunities = await analyze(niche, filters, signal);
   return { niche, filters, opportunities };
 }

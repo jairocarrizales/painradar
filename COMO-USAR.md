@@ -18,10 +18,9 @@ Claude Code**, necesitas pegar tu llave personal una vez:
    Inicia sesión si te lo pide y **copia el token** que aparece.
 3. Abre el archivo **`.env.local`** (en la carpeta del proyecto) y pega el token:
    ```
-   AI_PROVIDER=claude-agent
-   PAINRADAR_AGENT_MODEL=sonnet
    CLAUDE_CODE_OAUTH_TOKEN=aqui-va-tu-token
    ```
+   Con solo esa línea, la app ya usa el agente automáticamente.
 4. Guarda el archivo. **Listo, esto no se vuelve a hacer.**
 
 > 💡 Si ya tienes Claude Code instalado y con sesión iniciada en tu máquina, puede que

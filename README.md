@@ -14,7 +14,7 @@ API key) para buscar quejas reales de usuarios en múltiples fuentes e idiomas y
 
 - [Qué hace](#-qué-hace)
 - [Características](#-características)
-- [Motor de IA: 3 modos](#-motor-de-ia-3-modos)
+- [Motor de IA: 2 modos](#-motor-de-ia-2-modos)
 - [Inicio rápido](#-inicio-rápido)
 - [Usar tu suscripción de Claude (sin API key)](#-usar-tu-suscripción-de-claude-sin-api-key)
 - [Configuración (.env)](#-configuración-env)
@@ -62,19 +62,19 @@ API key) para buscar quejas reales de usuarios en múltiples fuentes e idiomas y
 
 ---
 
-## 🔌 Motor de IA: 3 modos
+## 🔌 Motor de IA: 2 modos
 
-Se elige con la variable `AI_PROVIDER`:
-
-| Modo | Qué usa | Llaves necesarias | Coste |
-|------|---------|-------------------|-------|
+| Modo | Qué usa | Llave | Coste |
+|------|---------|-------|-------|
+| `claude-agent` | **Agente Claude local** con tu suscripción (recomendado) | `CLAUDE_CODE_OAUTH_TOKEN` | Cuota de tu plan |
 | `mock` | Datos de demostración bilingües (deterministas) | Ninguna | — |
-| `claude-agent` | **Agente Claude local** con tu suscripción (recomendado) | `CLAUDE_CODE_OAUTH_TOKEN` (o estar logueado en Claude Code) | Cuota de tu plan |
-| `openrouter` | API de OpenRouter (de pago por token) | `OPENROUTER_API_KEY` + APIs de fuentes | Por token |
 
-En `claude-agent`, el agente usa sus herramientas **WebSearch / WebFetch** para investigar él
-mismo: **no necesitas llaves de Reddit ni YouTube**. Si el agente falla o devuelve vacío, la app
-cae automáticamente a `mock` para no romperse.
+**No tienes que elegir el modo a mano:** si pones tu `CLAUDE_CODE_OAUTH_TOKEN` en `.env.local`,
+la app usa el **agente** automáticamente; si no hay token, usa **mock** (demo). El agente usa sus
+herramientas **WebSearch / WebFetch** para investigar él mismo — **no necesitas llaves de Reddit,
+YouTube ni de ninguna fuente**. Si el agente falla o devuelve vacío, cae a `mock` para no romperse.
+
+> Para forzar un modo puedes poner `AI_PROVIDER=claude-agent` o `AI_PROVIDER=mock` en `.env.local`.
 
 ---
 
@@ -137,9 +137,8 @@ El modo `claude-agent` corre un agente en **tu máquina** con **tu suscripción*
    ```bash
    claude setup-token
    ```
-3. Configúralo en `.env.local`:
+3. Pégalo en `.env.local` (con solo esto, la app ya usa el agente):
    ```env
-   AI_PROVIDER=claude-agent
    CLAUDE_CODE_OAUTH_TOKEN=<pega-el-token>
    ```
 4. `npm run dev` y busca. La **primera** búsqueda de cada combinación tarda un par de minutos
@@ -151,18 +150,16 @@ Más detalle en **[SETUP-AGENT.md](SETUP-AGENT.md)**.
 
 ## ⚙️ Configuración (.env)
 
-Copia `.env.example` a `.env.local`. Todo es opcional excepto elegir `AI_PROVIDER`.
+Copia `.env.example` a `.env.local`. Lo único necesario es tu token (y solo si quieres el agente).
 
 | Variable | Por defecto | Para qué |
 |----------|-------------|----------|
-| `AI_PROVIDER` | `mock` | Motor: `mock` / `claude-agent` / `openrouter` |
-| `CLAUDE_CODE_OAUTH_TOKEN` | — | Token de suscripción para el modo agente |
-| `PAINRADAR_AGENT_MODEL` | `sonnet` | Modelo del agente (`opus` / `sonnet` / `haiku` / id completo) |
+| `CLAUDE_CODE_OAUTH_TOKEN` | — | Tu token de suscripción. Con esto puesto, la app usa el agente. |
+| `AI_PROVIDER` | auto | Opcional: `claude-agent` o `mock` para forzar un modo. |
+| `PAINRADAR_AGENT_MODEL` | `sonnet` | Modelo del agente (`opus` / `sonnet` / `haiku`) |
 | `PAINRADAR_AGENT_MAX_TURNS` | `30` | Máximo de vueltas del agente |
 | `PAINRADAR_AGENT_TIMEOUT_MS` | `420000` | Tiempo límite del agente (ms) |
 | `PAINRADAR_DATA_DIR` | `./data` | Carpeta de la base de datos SQLite |
-| `OPENROUTER_API_KEY` | — | Solo para `AI_PROVIDER=openrouter` |
-| `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` / `YOUTUBE_API_KEY` | — | Ingesta para el modo `openrouter` |
 
 > `.env.local`, `node_modules/`, `.next/` y `data/` están en `.gitignore` y **no** se suben.
 
@@ -187,8 +184,8 @@ src/
 │   └── page.tsx                # Redirige / → /dashboard
 ├── features/
 │   ├── search/                 # options (idiomas/fuentes), catálogo de nichos, buscador, historial
-│   ├── ingestion/              # collect (Reddit/YouTube en modo openrouter) + mock bilingüe
-│   ├── analysis/               # analyze (router de proveedor) + claude-agent (agente local)
+│   ├── ingestion/              # datos mock bilingües (fallback / demo)
+│   ├── analysis/               # analyze (agente o mock) + claude-agent (agente local)
 │   ├── opportunities/          # dashboard, tarjeta bilingüe, citas, estado vacío, cronómetro
 │   ├── favorites/              # store (Zustand) + botón
 │   └── export/                 # botón + documento PDF (@react-pdf)
@@ -272,7 +269,6 @@ npm run lint       # ESLint
 - **Next.js 16** (App Router, Turbopack) · **React 19** · **TypeScript**
 - **Tailwind CSS 3.4** — design system Neobrutalism
 - **@anthropic-ai/claude-agent-sdk** — motor de análisis local
-- **Vercel AI SDK 5** + **OpenRouter** — motor alterno opcional
 - **node:sqlite** — persistencia local
 - **Zod** (validación) · **Zustand** (estado) · **@react-pdf/renderer** (PDF) · **lucide-react** (iconos)
 
@@ -306,8 +302,8 @@ mensual aparte para Pro/Max).
 > **“Anthropic does not permit third-party developers to offer Claude.ai login or to route requests through Free, Pro, or Max plan credentials on behalf of their users.”**
 
 Es decir: no puedes hacer un servicio donde **otras personas** inicien sesión con su Claude y tu
-servidor use **las suscripciones de ellos**. Para eso se usa la **API de pago** (Commercial Terms,
-`AI_PROVIDER=openrouter`). *(No es asesoría legal; los términos pueden cambiar — lee las fuentes.)*
+servidor use **las suscripciones de ellos**. Para eso se usa la **API de pago** (Commercial Terms).
+*(No es asesoría legal; los términos pueden cambiar — lee las fuentes.)*
 
 ### 2) ¿Cómo se llama esta forma de usar la IA?
 

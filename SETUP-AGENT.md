@@ -1,9 +1,9 @@
 # Running PainRadar on YOUR Claude subscription (no API key)
 
 PainRadar can run its analysis through an **autonomous Claude agent on your own
-machine**, authenticated with **your own Claude Pro/Max subscription** — not an
-API key, not OpenRouter. The agent web-searches Reddit and YouTube itself, so you
-need **no Reddit/YouTube/OpenRouter keys** either.
+machine**, authenticated with **your own Claude Pro/Max subscription** — no API
+key. The agent web-searches the chosen sources itself, so you need **no Reddit,
+YouTube or any other source keys** either.
 
 > ⚖️ **Important — personal use only.** Using your Claude subscription this way is
 > fine for **you, on your own machine**. Anthropic's Terms do **not** allow a
@@ -24,9 +24,9 @@ need **no Reddit/YouTube/OpenRouter keys** either.
    ```
    Copy the token it prints.
 
-3. **Configure PainRadar.** Create `.env.local` (copy from `.env.example`):
+3. **Configure PainRadar.** Create `.env.local` (copy from `.env.example`) — with just
+   the token, the app uses the agent automatically:
    ```env
-   AI_PROVIDER=claude-agent
    CLAUDE_CODE_OAUTH_TOKEN=<paste the token from step 2>
    ```
 

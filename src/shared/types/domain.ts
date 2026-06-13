@@ -4,19 +4,6 @@ import { z } from "zod";
 export const PlatformSchema = z.string();
 export type Platform = z.infer<typeof PlatformSchema>;
 
-/** A raw complaint item collected during ingestion. */
-export const SourceItemSchema = z.object({
-  id: z.string(),
-  platform: PlatformSchema,
-  url: z.string().url(),
-  author: z.string(),
-  text: z.string(),
-  score: z.number().int().nonnegative(),
-  createdAt: z.string(),
-  context: z.string().optional(),
-});
-export type SourceItem = z.infer<typeof SourceItemSchema>;
-
 /** A textual quote that backs an opportunity. `textEs` = Spanish translation (if original ≠ es). */
 export const CitationSchema = z.object({
   text: z.string(),

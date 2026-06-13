@@ -98,11 +98,9 @@ src/features/
 ### Stack Confirmado
 - **Frontend:** Next.js 16 + React 19 + TypeScript + Tailwind 3.4 + shadcn/ui
 - **Backend:** SQLite local (node:sqlite) — favoritos, cache de busquedas e historial. Sin login.
-- **AI Engine (principal):** Claude Agent SDK LOCAL (`AI_PROVIDER=claude-agent`) con la
-  suscripcion Claude del propio usuario — sin API key. El agente web-busca Reddit/YouTube
-  el mismo (WebSearch/WebFetch), rankea y devuelve JSON. Fallback a mock si falla.
-- **AI Engine (alterno):** Vercel AI SDK v5 + OpenRouter (`AI_PROVIDER=openrouter`, de pago).
-- **Modo demo:** `AI_PROVIDER=mock` (default, datos deterministas, sin llaves).
+- **AI Engine:** Claude Agent SDK LOCAL con la suscripcion Claude del propio usuario — sin
+  API key. El agente web-busca las fuentes el mismo (WebSearch/WebFetch), rankea y devuelve
+  JSON. Si hay token, se usa el agente automaticamente; si no, modo demo (mock).
 - **Validacion:** Zod
 - **State:** Zustand (si necesario)
 - **PDF:** generacion server-side (@react-pdf/renderer)
@@ -115,7 +113,7 @@ src/features/
   que use suscripciones de OTROS usuarios para inferencia de backend (eso va por API de pago).
   Para uso PERSONAL del propio usuario, con su propia suscripcion, es 100% valido.
 - **Implicacion a futuro:** si se ofrece como SaaS a terceros, el camino sancionado es la API
-  de pago (OpenRouter/Anthropic), no las suscripciones de los clientes. Ver `SETUP-AGENT.md`.
+  de pago de Anthropic, no las suscripciones de los clientes. Ver `SETUP-AGENT.md`.
 
 ### Decision: single-user local, sin login, SQLite (2026-06-13)
 - Al ser una herramienta personal que SIEMPRE corre en la maquina del usuario, se ELIMINO la
