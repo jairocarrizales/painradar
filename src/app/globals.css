@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+body {
+  background-color: theme("colors.paper");
+  color: theme("colors.ink");
+  /* Subtle dotted grid background — neobrutalism flavor */
+  background-image: radial-gradient(theme("colors.ink") 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: -1px -1px;
+}
+
+@layer components {
+  /* Reusable neobrutalism surface */
+  .brutal-card {
+    @apply bg-white border-3 border-ink rounded-brutal shadow-brutal-md;
+  }
+  .brutal-btn {
+    @apply inline-flex items-center justify-center gap-2 border-3 border-ink rounded-brutal
+           font-bold shadow-brutal transition-all duration-100
+           hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-brutal-md
+           active:translate-x-0.5 active:translate-y-0.5 active:shadow-brutal-sm
+           disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .brutal-input {
+    @apply w-full bg-white border-3 border-ink rounded-brutal px-4 py-3 font-medium
+           shadow-brutal-sm outline-none focus:shadow-brutal
+           focus:-translate-x-0.5 focus:-translate-y-0.5 transition-all duration-100
+           placeholder:text-ink/40;
+  }
+  .brutal-tag {
+    @apply inline-flex items-center gap-1 border-2 border-ink rounded-full px-3 py-1
+           text-xs font-bold uppercase tracking-wide;
+  }
+}

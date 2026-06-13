@@ -1,0 +1,308 @@
+# PainRadar 🎯
+
+**Radar de oportunidades de app.** Usa un **agente Claude local** (tu propia suscripción, sin
+API key) para buscar quejas reales de usuarios en múltiples fuentes e idiomas y convertirlas en
+**ideas de app validadas y rankeadas**, cada una respaldada por citas reales con enlace a la fuente.
+
+> 🧍 Herramienta **personal, local, de un solo usuario**. Sin login. Tus datos se quedan en tu
+> máquina (SQLite). Pensada para que **tú** descubras tu próxima app, no para venderse como SaaS
+> (ver [Términos](#-nota-legal-uso-personal)).
+
+---
+
+## Tabla de contenido
+
+- [Qué hace](#-qué-hace)
+- [Características](#-características)
+- [Motor de IA: 3 modos](#-motor-de-ia-3-modos)
+- [Inicio rápido](#-inicio-rápido)
+- [Usar tu suscripción de Claude (sin API key)](#-usar-tu-suscripción-de-claude-sin-api-key)
+- [Configuración (.env)](#-configuración-env)
+- [Arquitectura](#-arquitectura)
+- [API interna](#-api-interna)
+- [Persistencia (SQLite)](#-persistencia-sqlite)
+- [Cómo se rankea](#-cómo-se-rankea)
+- [Comandos](#-comandos)
+- [Stack](#-stack)
+- [Nota legal: uso personal](#-nota-legal-uso-personal)
+- [Ramas del repo](#-ramas-del-repo)
+
+---
+
+## ✨ Qué hace
+
+1. Eliges un **nicho** (lo escribes o lo exploras en el **catálogo**: salud, amor, dinero y más).
+2. Eliges el **idioma** de búsqueda y las **fuentes** donde buscar.
+3. Un **agente Claude** busca en la web quejas reales de usuarios de las regiones de ese idioma.
+4. Obtienes un **dashboard** con oportunidades **rankeadas por dolor × frecuencia × hueco de
+   mercado**; cada una incluye: cita textual real + enlace a la fuente, resumen del problema,
+   scores, y una **idea de app sugerida**.
+5. Si buscas en un idioma distinto al español, cada resultado se muestra en su **idioma original
+   y traducido al español** (en pantalla y en el PDF).
+6. Guardas favoritos y **exportas a PDF**.
+
+---
+
+## 🧩 Características
+
+| Característica | Detalle |
+|---------------|---------|
+| **Multi-idioma** | Español, Inglés, Portugués, Francés, Italiano, Alemán. Cada idioma orienta la búsqueda a las **regiones** donde se habla (inglés → EE.UU./UK/Canadá/Australia/Irlanda; español → España + LatAm; etc.). |
+| **Resultados bilingües** | Si el idioma ≠ español, cada texto (título, resumen, idea, citas) aparece en el original **y traducido al español** debajo (🇪🇸). |
+| **Fuentes seleccionables** | Reddit, YouTube, Trustpilot, Google Play, App Store, G2, Capterra, TrustRadius, Product Hunt, AppSumo. El agente busca solo en las que elijas. |
+| **Catálogo de nichos** | Salud, Amor y relaciones, Dinero y finanzas, Productividad, Fitness, Educación, Hogar, Viajes — cada uno con **nicho → subnicho → micronicho**. |
+| **Cronómetro** | Muestra el tiempo que tarda la búsqueda en vivo; al terminar indica la duración (o "desde caché"). |
+| **Detener / Reanudar / Descartar** | Durante una búsqueda puedes **detenerla** (cancela el agente también en el servidor, ahorrando cuota). Luego puedes **reanudarla** (se ejecuta de nuevo) o **descartarla**. *(Una IA-agente no se puede congelar a mitad y continuar; "detener" cancela la corrida.)* |
+| **Caché + Refrescar** | Cada búsqueda (por nicho + idioma + fuentes + recencia) se cachea; reabrir es instantáneo. Botón **Refrescar** la vuelve a ejecutar. |
+| **Historial** | Página dedicada con **buscador por nicho** y **filtro por idioma** para reabrir cualquier búsqueda guardada con un clic. En el inicio se muestran las recientes con enlace "Ver todo". |
+| **Favoritos** | Guarda oportunidades; persisten localmente. |
+| **Export PDF** | PDF bilingüe con todas las oportunidades, citas y enlaces. |
+| **Sin login** | App local de un usuario; entras directo a la búsqueda. |
+| **Diseño** | Design system **Neobrutalism** (bordes gruesos, sombras duras, colores saturados). |
+
+---
+
+## 🔌 Motor de IA: 3 modos
+
+Se elige con la variable `AI_PROVIDER`:
+
+| Modo | Qué usa | Llaves necesarias | Coste |
+|------|---------|-------------------|-------|
+| `mock` | Datos de demostración bilingües (deterministas) | Ninguna | — |
+| `claude-agent` | **Agente Claude local** con tu suscripción (recomendado) | `CLAUDE_CODE_OAUTH_TOKEN` (o estar logueado en Claude Code) | Cuota de tu plan |
+| `openrouter` | API de OpenRouter (de pago por token) | `OPENROUTER_API_KEY` + APIs de fuentes | Por token |
+
+En `claude-agent`, el agente usa sus herramientas **WebSearch / WebFetch** para investigar él
+mismo: **no necesitas llaves de Reddit ni YouTube**. Si el agente falla o devuelve vacío, la app
+cae automáticamente a `mock` para no romperse.
+
+---
+
+## 🚀 Inicio rápido
+
+```bash
+npm install
+cp .env.example .env.local      # 'mock' funciona sin ninguna llave
+npm run dev
+```
+
+Abre **http://localhost:3000** — entra directo a la búsqueda. Elige idioma y fuentes, escribe un
+nicho (o explóralo en el catálogo) y pulsa **Buscar**.
+
+> En modo `mock` los resultados son instantáneos y de demostración. Para resultados reales, usa
+> el modo agente 👇.
+
+---
+
+## 🔑 Usar tu suscripción de Claude (sin API key)
+
+El modo `claude-agent` corre un agente en **tu máquina** con **tu suscripción** de Claude.
+
+1. Instala Claude Code e inicia sesión:
+   ```bash
+   npm install -g @anthropic-ai/claude-code
+   claude          # abre el navegador para iniciar sesión
+   ```
+2. Genera un token de larga duración:
+   ```bash
+   claude setup-token
+   ```
+3. Configúralo en `.env.local`:
+   ```env
+   AI_PROVIDER=claude-agent
+   CLAUDE_CODE_OAUTH_TOKEN=<pega-el-token>
+   ```
+4. `npm run dev` y busca. La **primera** búsqueda de cada combinación tarda un par de minutos
+   (el agente lee hilos reales); luego queda en caché y es instantánea.
+
+Más detalle en **[SETUP-AGENT.md](SETUP-AGENT.md)**.
+
+---
+
+## ⚙️ Configuración (.env)
+
+Copia `.env.example` a `.env.local`. Todo es opcional excepto elegir `AI_PROVIDER`.
+
+| Variable | Por defecto | Para qué |
+|----------|-------------|----------|
+| `AI_PROVIDER` | `mock` | Motor: `mock` / `claude-agent` / `openrouter` |
+| `CLAUDE_CODE_OAUTH_TOKEN` | — | Token de suscripción para el modo agente |
+| `PAINRADAR_AGENT_MODEL` | `sonnet` | Modelo del agente (`opus` / `sonnet` / `haiku` / id completo) |
+| `PAINRADAR_AGENT_MAX_TURNS` | `30` | Máximo de vueltas del agente |
+| `PAINRADAR_AGENT_TIMEOUT_MS` | `420000` | Tiempo límite del agente (ms) |
+| `PAINRADAR_DATA_DIR` | `./data` | Carpeta de la base de datos SQLite |
+| `OPENROUTER_API_KEY` | — | Solo para `AI_PROVIDER=openrouter` |
+| `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` / `YOUTUBE_API_KEY` | — | Ingesta para el modo `openrouter` |
+
+> `.env.local`, `node_modules/`, `.next/` y `data/` están en `.gitignore` y **no** se suben.
+
+---
+
+## 🏗️ Arquitectura
+
+Organización **feature-first**:
+
+```
+src/
+├── app/
+│   ├── (main)/                 # Dashboard + favoritos (layout sin login)
+│   │   ├── dashboard/          # Pantalla de búsqueda + resultados
+│   │   └── favorites/          # Oportunidades guardadas
+│   ├── api/
+│   │   ├── radar/              # Ejecuta/cachea una búsqueda
+│   │   ├── favorites/          # Guardar/listar/quitar favoritos
+│   │   ├── history/            # Historial de búsquedas
+│   │   └── export/             # Genera el PDF
+│   ├── layout.tsx              # lang="es", fuentes, metadata
+│   └── page.tsx                # Redirige / → /dashboard
+├── features/
+│   ├── search/                 # options (idiomas/fuentes), catálogo de nichos, buscador, historial
+│   ├── ingestion/              # collect (Reddit/YouTube en modo openrouter) + mock bilingüe
+│   ├── analysis/               # analyze (router de proveedor) + claude-agent (agente local)
+│   ├── opportunities/          # dashboard, tarjeta bilingüe, citas, estado vacío, cronómetro
+│   ├── favorites/              # store (Zustand) + botón
+│   └── export/                 # botón + documento PDF (@react-pdf)
+└── shared/
+    ├── components/ui/          # Button, Card, Input, Tag, ScoreBar (Neobrutalism)
+    ├── lib/                    # db.ts (SQLite), utils.ts (provider switch)
+    └── types/domain.ts         # Esquemas Zod: Opportunity, Citation, SearchFilters…
+```
+
+**Flujo de una búsqueda:** `dashboard` → `ResultsView` llama a `GET /api/radar` →
+`runSearch()` (pipeline) → `collectComplaints()` + `analyze()` (elige proveedor) →
+en modo agente, `analyzeWithClaudeAgent()` busca y rankea → se cachea en SQLite → se renderiza.
+
+---
+
+## 🛰️ API interna
+
+| Ruta | Método | Función |
+|------|--------|---------|
+| `/api/radar?niche=&recency=&lang=&sources=&refresh=` | GET | Ejecuta (o sirve de caché) una búsqueda. `refresh=1` ignora la caché. |
+| `/api/favorites` | GET / POST / DELETE | Listar / alternar (`{opportunity}`) / quitar (`?id=`) favoritos |
+| `/api/history` | GET | Búsquedas recientes |
+| `/api/export` | POST | Genera el PDF a partir de `{niche, opportunities}` |
+
+---
+
+## 💾 Persistencia (SQLite)
+
+Sin base de datos externa: todo vive en **`./data/painradar.db`** (`node:sqlite`, sin compilación
+nativa). Tablas:
+
+- **`favorites`** — oportunidades guardadas.
+- **`search_cache`** — resultados por `clave = nicho|recencia|idioma|fuentes`; también alimenta el
+  **historial** (ordenado por fecha).
+
+Borra `data/painradar.db` para reiniciar; respáldalo para conservar tus ideas guardadas.
+
+---
+
+## 📊 Cómo se calcula la puntuación
+
+Cada oportunidad recibe **3 puntuaciones de 0 a 100** (equivalen a una escala de 0 a 10 ×10:
+`76/100 = 7.6/10`). En modo agente, es el propio **Claude** quien las asigna leyendo las quejas
+reales que encuentra.
+
+| Métrica | Peso | Qué mide | Qué la sube |
+|---------|------|----------|-------------|
+| **Dolor** | 45% | Qué tan frustrados/molestos están los usuarios (intensidad de la emoción negativa). | Lenguaje fuerte: “lo odio”, “es una pesadilla”, “me rendí”. |
+| **Frecuencia** | 35% | Cuánta gente distinta menciona el mismo problema (qué tan extendido y recurrente es). | El mismo dolor repetido por muchas personas en muchos hilos/videos/reseñas. |
+| **Hueco de mercado** | 20% | Qué tan SIN resolver está hoy (el espacio libre / la oportunidad). | “No existe nada que haga esto” o que las soluciones actuales son malas. |
+
+**Puntuación global (overall):** combinación ponderada (el dolor pesa más porque es la mejor señal):
+
+```
+global = Dolor × 0.45  +  Frecuencia × 0.35  +  Hueco × 0.20
+```
+
+Ejemplo: Dolor 90, Frecuencia 80, Hueco 60 → `90×0.45 + 80×0.35 + 60×0.20 = 80.5 ≈ 81/100`.
+
+**El ranking (#1, #2, #3…):** las oportunidades se ordenan de **mayor a menor** puntuación global.
+La **#1** es el problema más doloroso, frecuente y menos resuelto — lo que más vale la pena construir.
+
+> En la app: enlace **“¿cómo se calcula?”** en los resultados, o el pie → página `/metodologia`.
+
+---
+
+## 🧰 Comandos
+
+```bash
+npm run dev        # servidor de desarrollo (http://localhost:3000)
+npm run build      # build de producción
+npm run start      # servidor de producción
+npm run typecheck  # verificación de tipos (tsc)
+npm run lint       # ESLint
+```
+
+---
+
+## 🧱 Stack
+
+- **Next.js 16** (App Router, Turbopack) · **React 19** · **TypeScript**
+- **Tailwind CSS 3.4** — design system Neobrutalism
+- **@anthropic-ai/claude-agent-sdk** — motor de análisis local
+- **Vercel AI SDK 5** + **OpenRouter** — motor alterno opcional
+- **node:sqlite** — persistencia local
+- **Zod** (validación) · **Zustand** (estado) · **@react-pdf/renderer** (PDF) · **lucide-react** (iconos)
+
+---
+
+## ⚖️ ¿Es permitido usarlo con tu cuenta personal? (legalidad)
+
+### 1) Sí — está permitido para uso personal
+
+La página oficial **[Legal and compliance — Claude Code](https://code.claude.com/docs/en/legal-and-compliance)**,
+en la sección *“Authentication and credential use”*, dice textualmente:
+
+> **“OAuth authentication is intended exclusively for purchasers of Claude Free, Pro, Max, Team, and Enterprise subscription plans and is designed to support ordinary use of Claude Code and other native Anthropic applications.”**
+
+Y en *“Acceptable use”*:
+
+> **“Advertised usage limits for Pro and Max plans assume ordinary, individual usage of Claude Code and the Agent SDK.”**
+
+El artículo **[Use the Claude Agent SDK with your Claude plan](https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan)**
+confirma que el crédito mensual del Agent SDK cubre expresamente:
+
+> **“Third-party apps that authenticate with your Claude subscription through the Agent SDK.”**
+
+PainRadar es justo eso: una **app de terceros (la tuya)** que se autentica con **tu** suscripción
+a través del Agent SDK → **uso ordinario e individual = permitido** ✅. Además, desde el **15 de junio
+de 2026**, ese uso *“no longer counts toward your Claude plan's usage limits”* (tiene un crédito
+mensual aparte para Pro/Max).
+
+**⚠️ La línea roja (lo que NO se puede):**
+
+> **“Anthropic does not permit third-party developers to offer Claude.ai login or to route requests through Free, Pro, or Max plan credentials on behalf of their users.”**
+
+Es decir: no puedes hacer un servicio donde **otras personas** inicien sesión con su Claude y tu
+servidor use **las suscripciones de ellos**. Para eso se usa la **API de pago** (Commercial Terms,
+`AI_PROVIDER=openrouter`). *(No es asesoría legal; los términos pueden cambiar — lee las fuentes.)*
+
+### 2) ¿Cómo se llama esta forma de usar la IA?
+
+No tiene un solo nombre, pero se describe con estos términos:
+
+- **App “local-first” agéntica** — corre en tu máquina, no en un servidor en la nube.
+- Construida sobre el **Claude Agent SDK** (el framework oficial).
+- **“BYO subscription” / “bring-your-own-account”** — trae tu propia cuenta (variante de *BYOK*, bring-your-own-key).
+- **Single-tenant / self-hosted / on-device** — un solo usuario, auto-alojado, orquestación del agente del lado del cliente.
+
+En una frase: *PainRadar es una **app local-first de un solo usuario, agéntica, construida sobre el
+Claude Agent SDK con autenticación por suscripción (BYO-subscription)**.*
+
+**Fuentes:**
+[Legal and compliance — Claude Code](https://code.claude.com/docs/en/legal-and-compliance) ·
+[Use the Claude Agent SDK with your Claude plan](https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan) ·
+[Use Claude Code with your Pro or Max plan](https://support.claude.com/en/articles/11145838-use-claude-code-with-your-pro-or-max-plan) ·
+[Consumer Terms](https://www.anthropic.com/legal/consumer-terms) ·
+[Usage Policy](https://www.anthropic.com/legal/aup)
+
+---
+
+## 🌿 Ramas del repo
+
+| Rama | Contenido |
+|------|-----------|
+| **`PainRadar`** | Solo la app PainRadar (esta rama, limpia). |
+| **`main`** | Respaldo: PainRadar **+** el framework SaaS Factory con el que se construyó. |
