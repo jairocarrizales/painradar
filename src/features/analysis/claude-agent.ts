@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 import type { Opportunity, SearchFilters } from "@/shared/types/domain";
 import { languageLabel, languageRegions, sourcesDescription } from "@/features/search/options";
+import { collectYoutubeComments, type YoutubeComment } from "@/features/ingestion/youtube";
 
 /**
  * Local-first analysis engine powered by the Claude Agent SDK.
@@ -68,7 +69,17 @@ function buildSystemPrompt(): string {
   ].join(" ");
 }
 
-function buildPrompt(niche: string, filters: SearchFilters): string {
+/** Formatea los comentarios reales de YouTube para inyectarlos en el prompt. */
+function formatYoutubeBlock(comments: YoutubeComment[]): string {
+  const lines = comments
+    .map((c) => `- 👍${c.likeCount} "${c.text.replace(/\s+/g, " ")}" — ${c.author} | ${c.url}`)
+    .join("\n");
+  return `COMENTARIOS REALES DE YOUTUBE (recolectados con la API oficial; son opiniones reales de usuarios).
+Úsalos como la fuente "youtube": extrae los que sean QUEJAS y cítalos TAL CUAL con su url. NO inventes.
+${lines}`;
+}
+
+function buildPrompt(niche: string, filters: SearchFilters, ytBlock: string): string {
   const lang = filters.language;
   const isEs = lang === "es";
   const langName = languageLabel(lang);
@@ -82,12 +93,14 @@ function buildPrompt(niche: string, filters: SearchFilters): string {
   return `Investiga el nicho "${niche}" para oportunidades de apps.
 
 IDIOMA Y REGIÓN: busca en ${langName}, enfocándote en usuarios de ${regions}.
-FUENTES: busca ÚNICAMENTE en estas fuentes: ${sources}. Usa sus dominios en las búsquedas.
+FUENTES: busca ÚNICAMENTE en estas fuentes: ${sources}. Usa sus dominios en las búsquedas.${
+    ytBlock ? "\nPara YouTube NO uses búsqueda web: usa los COMENTARIOS REALES que te doy más abajo." : ""
+  }
 RECENCIA preferida: ${filters.recency}.
 
 PRESUPUESTO: haz como MUCHO 6 búsquedas web en total, luego DETENTE y sintetiza. Es válido que
 varias oportunidades citen los mismos hilos. Prioriza ENTREGAR JSON VÁLIDO sobre investigar de más.
-
+${ytBlock ? "\n" + ytBlock + "\n" : ""}
 ${translationRule}
 
 Agrupa lo que encuentres en 8-10 oportunidades distintas. Para cada una: title, problemSummary
@@ -140,11 +153,18 @@ export async function analyzeWithClaudeAgent(
     else externalSignal.addEventListener("abort", () => controller.abort(), { once: true });
   }
 
+  // Pre-fetch REAL YouTube comments via the official API (the agent can't read them itself).
+  let ytBlock = "";
+  if (filters.sources.includes("youtube")) {
+    const comments = await collectYoutubeComments(niche, filters.language, controller.signal);
+    if (comments.length) ytBlock = formatYoutubeBlock(comments);
+  }
+
   let finalText = "";
   let lastAssistantText = "";
   try {
     for await (const message of query({
-      prompt: buildPrompt(niche, filters),
+      prompt: buildPrompt(niche, filters, ytBlock),
       options: {
         model: process.env.PAINRADAR_AGENT_MODEL || "sonnet",
         systemPrompt: buildSystemPrompt(),
