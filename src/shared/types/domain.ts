@@ -4,6 +4,50 @@ import { z } from "zod";
 export const PlatformSchema = z.string();
 export type Platform = z.infer<typeof PlatformSchema>;
 
+// ─── Inteligencia del nicho (App Store) ───
+
+/** Ficha de una app del nicho (datos oficiales de Apple). */
+export interface AppInfo {
+  id: number;
+  name: string;
+  developer: string;
+  rating: number; // 0-5
+  ratingCount: number;
+  price: string; // "Gratis" o el precio formateado
+  lastUpdate: string; // ISO
+  monthsSinceUpdate: number;
+  abandoned: boolean;
+  genre: string;
+  url: string;
+}
+
+/** Una reseña usada en aman/odian/piden. */
+export interface IntelReview {
+  text: string;
+  rating: number;
+  appName: string;
+  country: string;
+  url: string;
+}
+
+/** Señal de oportunidad detectada. */
+export interface NicheSignal {
+  type: "demanda" | "abandonada";
+  appName: string;
+  detail: string;
+}
+
+/** Panel de inteligencia del nicho. */
+export interface NicheIntel {
+  country: string;
+  apps: AppInfo[]; // fichas (top por reseñas)
+  gems: AppInfo[]; // joyas: pocas reseñas (100-300) pero muy bien calificadas
+  signals: NicheSignal[];
+  loves: IntelReview[];
+  hates: IntelReview[];
+  requests: IntelReview[];
+}
+
 /** A textual quote that backs an opportunity. `textEs` = Spanish translation (if original ≠ es). */
 export const CitationSchema = z.object({
   text: z.string(),

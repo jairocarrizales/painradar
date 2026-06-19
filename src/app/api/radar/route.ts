@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { runSearch } from "@/features/search/pipeline";
 import { getCachedSearch, setCachedSearch } from "@/shared/lib/db";
 import { DEFAULT_SOURCES } from "@/features/search/options";
+import { collectAppStoreIntel } from "@/features/ingestion/appstore";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -27,6 +28,7 @@ export async function GET(request: NextRequest) {
         language,
         provider: cached.provider,
         opportunities: cached.opportunities,
+        intel: cached.intel,
         cached: true,
         createdAt: cached.createdAt,
       });
@@ -34,17 +36,22 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const result = await runSearch(
-      niche,
-      { recency: recency as never, language, sources },
-      request.signal, // cancelling the request stops the agent
-    );
-    setCachedSearch(niche, recency, language, sources, "claude-agent", result.opportunities);
+    // El panel de inteligencia (App Store) se obtiene en paralelo con la búsqueda del agente.
+    const intelPromise = sources.includes("appstore")
+      ? collectAppStoreIntel(niche, language, request.signal)
+      : Promise.resolve(null);
+    const [result, intel] = await Promise.all([
+      runSearch(niche, { recency: recency as never, language, sources }, request.signal),
+      intelPromise,
+    ]);
+
+    setCachedSearch(niche, recency, language, sources, "claude-agent", result.opportunities, intel);
     return NextResponse.json({
       niche: result.niche,
       language,
       provider: "claude-agent",
       opportunities: result.opportunities,
+      intel,
       cached: false,
     });
   } catch (err) {

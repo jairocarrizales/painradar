@@ -14,8 +14,9 @@ import {
   Play,
   Trash2,
 } from "lucide-react";
-import type { Opportunity } from "@/shared/types/domain";
+import type { Opportunity, NicheIntel } from "@/shared/types/domain";
 import { OpportunityCard } from "./opportunity-card";
+import { NicheIntelPanel } from "./niche-intel";
 import { ExportButton } from "@/features/export/components/export-button";
 
 interface ResultsViewProps {
@@ -32,6 +33,7 @@ type State =
   | {
       kind: "done";
       opportunities: Opportunity[];
+      intel: NicheIntel | null;
       provider: string;
       cached: boolean;
       durationSec: number;
@@ -83,6 +85,7 @@ export function ResultsView({ niche, recency, lang, sources }: ResultsViewProps)
           setState({
             kind: "done",
             opportunities: data.opportunities,
+            intel: data.intel ?? null,
             provider: data.provider,
             cached: Boolean(data.cached),
             durationSec: secondsRef.current,
@@ -192,7 +195,7 @@ export function ResultsView({ niche, recency, lang, sources }: ResultsViewProps)
     );
   }
 
-  const { opportunities, cached, durationSec } = state;
+  const { opportunities, intel, cached, durationSec } = state;
   const providerLabel = "investigación web en vivo";
 
   return (
@@ -237,6 +240,8 @@ export function ResultsView({ niche, recency, lang, sources }: ResultsViewProps)
           <ExportButton niche={niche} opportunities={opportunities} />
         </div>
       </div>
+
+      {intel && <NicheIntelPanel intel={intel} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {opportunities.map((opp, i) => (

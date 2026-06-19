@@ -2,7 +2,7 @@ import "server-only";
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import type { Opportunity } from "@/shared/types/domain";
+import type { Opportunity, NicheIntel } from "@/shared/types/domain";
 
 /**
  * Local SQLite store for the single-user, runs-on-your-machine build.
@@ -32,6 +32,12 @@ function openDb(): DatabaseSync {
       created_at    INTEGER NOT NULL
     );
   `);
+  // Columna añadida después: panel de inteligencia del nicho (JSON).
+  try {
+    db.exec("ALTER TABLE search_cache ADD COLUMN intel TEXT");
+  } catch {
+    /* ya existe */
+  }
   return db;
 }
 
@@ -74,6 +80,7 @@ export function removeFavorite(id: string): void {
 export interface CachedSearch {
   provider: string;
   opportunities: Opportunity[];
+  intel: NicheIntel | null;
   createdAt: number;
 }
 
@@ -99,15 +106,16 @@ export function getCachedSearch(
 ): CachedSearch | null {
   const row = db()
     .prepare(
-      "SELECT provider, opportunities, created_at FROM search_cache WHERE key = ?",
+      "SELECT provider, opportunities, intel, created_at FROM search_cache WHERE key = ?",
     )
     .get(cacheKey(niche, recency, language, sources)) as
-    | { provider: string; opportunities: string; created_at: number }
+    | { provider: string; opportunities: string; intel: string | null; created_at: number }
     | undefined;
   if (!row) return null;
   return {
     provider: row.provider,
     opportunities: JSON.parse(row.opportunities) as Opportunity[],
+    intel: row.intel ? (JSON.parse(row.intel) as NicheIntel) : null,
     createdAt: row.created_at,
   };
 }
@@ -119,16 +127,18 @@ export function setCachedSearch(
   sources: string[],
   provider: string,
   opportunities: Opportunity[],
+  intel: NicheIntel | null,
 ): void {
   db()
     .prepare(
       `INSERT INTO search_cache
-         (key, niche, recency, language, sources, provider, opportunities, count, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+         (key, niche, recency, language, sources, provider, opportunities, count, intel, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(key) DO UPDATE SET
          provider = excluded.provider,
          opportunities = excluded.opportunities,
          count = excluded.count,
+         intel = excluded.intel,
          created_at = excluded.created_at`,
     )
     .run(
@@ -140,6 +150,7 @@ export function setCachedSearch(
       provider,
       JSON.stringify(opportunities),
       opportunities.length,
+      intel ? JSON.stringify(intel) : null,
       Date.now(),
     );
 }
