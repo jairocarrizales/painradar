@@ -59,25 +59,25 @@ export interface SourceOption {
   tone: string;
 }
 
-/** User-selectable places to search. */
+/**
+ * User-selectable places to search. Solo fuentes que SÍ funcionan:
+ * App Store/YouTube/GitHub usan API oficial; Product Hunt/AppSumo/Capterra via agente web.
+ * (Reddit, Trustpilot, Google Play, G2 y TrustRadius se quitaron: bloquean bots o cargan
+ * con JavaScript y no devolvían quejas reales.)
+ */
 export const SOURCES: SourceOption[] = [
-  { id: "reddit", label: "Reddit", domain: "reddit.com", tone: "pop-orange" },
-  { id: "youtube", label: "YouTube", domain: "youtube.com", tone: "pop-red" },
-  { id: "trustpilot", label: "Trustpilot", domain: "trustpilot.com", tone: "pop-lime" },
-  { id: "googleplay", label: "Google Play", domain: "play.google.com", tone: "pop-cyan" },
   { id: "appstore", label: "App Store", domain: "apps.apple.com", tone: "pop-violet" },
-  { id: "g2", label: "G2", domain: "g2.com", tone: "pop-pink" },
-  { id: "capterra", label: "Capterra", domain: "capterra.com", tone: "brand" },
-  { id: "trustradius", label: "TrustRadius", domain: "trustradius.com", tone: "pop-lime" },
+  { id: "youtube", label: "YouTube", domain: "youtube.com", tone: "pop-red" },
+  { id: "github", label: "GitHub", domain: "github.com", tone: "pop-cyan" },
   { id: "producthunt", label: "Product Hunt", domain: "producthunt.com", tone: "pop-orange" },
-  { id: "appsumo", label: "AppSumo", domain: "appsumo.com", tone: "pop-cyan" },
-  { id: "github", label: "GitHub", domain: "github.com", tone: "pop-violet" },
+  { id: "appsumo", label: "AppSumo", domain: "appsumo.com", tone: "pop-lime" },
+  { id: "capterra", label: "Capterra", domain: "capterra.com", tone: "brand" },
 ];
 
 /** All source ids plus a "web" fallback for citations from elsewhere. */
 export const SOURCE_IDS = [...SOURCES.map((s) => s.id), "web"] as const;
 
-export const DEFAULT_SOURCES = ["reddit", "youtube", "trustpilot", "appstore", "googleplay"];
+export const DEFAULT_SOURCES = ["appstore", "youtube", "github"];
 
 export function sourceLabel(id: string): string {
   if (id === "web") return "Web";
