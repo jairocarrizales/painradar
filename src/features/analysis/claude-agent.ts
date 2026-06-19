@@ -4,6 +4,7 @@ import type { Opportunity, SearchFilters } from "@/shared/types/domain";
 import { languageLabel, languageRegions, sourcesDescription } from "@/features/search/options";
 import { collectYoutubeComments, type YoutubeComment } from "@/features/ingestion/youtube";
 import { collectAppStoreComplaints, type AppStoreReview } from "@/features/ingestion/appstore";
+import { collectGithubIssues, type GithubIssue } from "@/features/ingestion/github";
 
 /**
  * Local-first analysis engine powered by the Claude Agent SDK.
@@ -90,7 +91,23 @@ function formatAppStoreBlock(reviews: AppStoreReview[]): string {
 ${lines}`;
 }
 
-function buildPrompt(niche: string, filters: SearchFilters, ytBlock: string, asBlock: string): string {
+/** Formatea los issues reales de GitHub para inyectarlos en el prompt. */
+function formatGithubBlock(issues: GithubIssue[]): string {
+  const lines = issues
+    .map((i) => `- 💬${i.comments} [${i.repo}] "${i.text}" | ${i.url}`)
+    .join("\n");
+  return `ISSUES REALES DE GITHUB (bugs y peticiones de funciones en proyectos open-source del nicho).
+Úsalos como la fuente "github": son huecos/quejas reales; cítalos TAL CUAL con su url. NO inventes.
+${lines}`;
+}
+
+function buildPrompt(
+  niche: string,
+  filters: SearchFilters,
+  ytBlock: string,
+  asBlock: string,
+  ghBlock: string,
+): string {
   const lang = filters.language;
   const isEs = lang === "es";
   const langName = languageLabel(lang);
@@ -98,8 +115,11 @@ function buildPrompt(niche: string, filters: SearchFilters, ytBlock: string, asB
   const providedIds: string[] = [];
   if (ytBlock) providedIds.push("youtube");
   if (asBlock) providedIds.push("appstore");
+  if (ghBlock) providedIds.push("github");
   const webSources = filters.sources.filter((s) => !providedIds.includes(s));
-  const provided = [ytBlock ? "YouTube" : "", asBlock ? "App Store" : ""].filter(Boolean).join(" y ");
+  const provided = [ytBlock ? "YouTube" : "", asBlock ? "App Store" : "", ghBlock ? "GitHub" : ""]
+    .filter(Boolean)
+    .join(", ");
 
   const sourcesLine =
     webSources.length === 0
@@ -120,7 +140,7 @@ PRESUPUESTO: haz como MUCHO 6 búsquedas web en total, luego DETENTE y sintetiza
 IDIOMA Y REGIÓN: ${langName}, usuarios de ${regions}.
 ${sourcesLine}
 RECENCIA preferida: ${filters.recency}. Prioriza ENTREGAR JSON VÁLIDO sobre investigar de más.
-${ytBlock ? "\n" + ytBlock + "\n" : ""}${asBlock ? "\n" + asBlock + "\n" : ""}
+${ytBlock ? "\n" + ytBlock + "\n" : ""}${asBlock ? "\n" + asBlock + "\n" : ""}${ghBlock ? "\n" + ghBlock + "\n" : ""}
 ${translationRule}
 
 Agrupa lo que encuentres en 6-8 oportunidades distintas (solo las respaldadas por quejas reales;
@@ -175,21 +195,30 @@ export async function analyzeWithClaudeAgent(
   }
 
   // Pre-fetch REAL data via official APIs (the agent can't read these itself).
-  const [ytComments, asReviews] = await Promise.all([
+  const [ytComments, asReviews, ghIssues] = await Promise.all([
     filters.sources.includes("youtube")
       ? collectYoutubeComments(niche, filters.language, controller.signal)
       : Promise.resolve([]),
     filters.sources.includes("appstore")
       ? collectAppStoreComplaints(niche, filters.language, controller.signal)
       : Promise.resolve([]),
+    filters.sources.includes("github")
+      ? collectGithubIssues(niche, filters.language, controller.signal)
+      : Promise.resolve([]),
   ]);
   const ytBlock = ytComments.length ? formatYoutubeBlock(ytComments) : "";
   const asBlock = asReviews.length ? formatAppStoreBlock(asReviews) : "";
+  const ghBlock = ghIssues.length ? formatGithubBlock(ghIssues) : "";
 
   // Si todas las fuentes seleccionadas ya están pre-recolectadas, no hace falta web:
   // quitamos las herramientas para forzar síntesis directa (mucho más rápido).
   const webSources = filters.sources.filter(
-    (s) => !((s === "youtube" && ytBlock) || (s === "appstore" && asBlock)),
+    (s) =>
+      !(
+        (s === "youtube" && ytBlock) ||
+        (s === "appstore" && asBlock) ||
+        (s === "github" && ghBlock)
+      ),
   );
   const needsWeb = webSources.length > 0;
 
@@ -197,7 +226,7 @@ export async function analyzeWithClaudeAgent(
   let lastAssistantText = "";
   try {
     for await (const message of query({
-      prompt: buildPrompt(niche, filters, ytBlock, asBlock),
+      prompt: buildPrompt(niche, filters, ytBlock, asBlock, ghBlock),
       options: {
         model: process.env.PAINRADAR_AGENT_MODEL || "sonnet",
         systemPrompt: buildSystemPrompt(),

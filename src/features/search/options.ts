@@ -71,6 +71,7 @@ export const SOURCES: SourceOption[] = [
   { id: "trustradius", label: "TrustRadius", domain: "trustradius.com", tone: "pop-lime" },
   { id: "producthunt", label: "Product Hunt", domain: "producthunt.com", tone: "pop-orange" },
   { id: "appsumo", label: "AppSumo", domain: "appsumo.com", tone: "pop-cyan" },
+  { id: "github", label: "GitHub", domain: "github.com", tone: "pop-violet" },
 ];
 
 /** All source ids plus a "web" fallback for citations from elsewhere. */
