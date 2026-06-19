@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { Opportunity, SearchFilters } from "@/shared/types/domain";
 import { languageLabel, languageRegions, sourcesDescription } from "@/features/search/options";
 import { collectYoutubeComments, type YoutubeComment } from "@/features/ingestion/youtube";
+import { collectAppStoreComplaints, type AppStoreReview } from "@/features/ingestion/appstore";
 
 /**
  * Local-first analysis engine powered by the Claude Agent SDK.
@@ -79,12 +80,36 @@ function formatYoutubeBlock(comments: YoutubeComment[]): string {
 ${lines}`;
 }
 
-function buildPrompt(niche: string, filters: SearchFilters, ytBlock: string): string {
+/** Formatea las reseñas reales de App Store para inyectarlas en el prompt. */
+function formatAppStoreBlock(reviews: AppStoreReview[]): string {
+  const lines = reviews
+    .map((r) => `- [${r.rating}★ ${r.appName}, ${r.country.toUpperCase()}] "${r.text}" — ${r.author} | ${r.url}`)
+    .join("\n");
+  return `RESEÑAS REALES DE APP STORE (feed oficial de Apple, por país; son quejas reales 1-3★).
+Úsalas como la fuente "appstore": cítalas TAL CUAL con su url. NO inventes.
+${lines}`;
+}
+
+function buildPrompt(niche: string, filters: SearchFilters, ytBlock: string, asBlock: string): string {
   const lang = filters.language;
   const isEs = lang === "es";
   const langName = languageLabel(lang);
   const regions = languageRegions(lang);
-  const sources = sourcesDescription(filters.sources);
+  const providedIds: string[] = [];
+  if (ytBlock) providedIds.push("youtube");
+  if (asBlock) providedIds.push("appstore");
+  const webSources = filters.sources.filter((s) => !providedIds.includes(s));
+  const provided = [ytBlock ? "YouTube" : "", asBlock ? "App Store" : ""].filter(Boolean).join(" y ");
+
+  const sourcesLine =
+    webSources.length === 0
+      ? `FUENTES: NO hagas NINGUNA búsqueda web. Ya tienes TODOS los datos reales abajo${
+          provided ? ` (${provided})` : ""
+        }. Sintetiza las oportunidades DIRECTAMENTE de esos datos.`
+      : `FUENTES: web-busca ÚNICAMENTE en: ${sourcesDescription(webSources)} (usa sus dominios).${
+          provided ? ` Para ${provided} NO uses búsqueda web: usa los datos reales que te doy abajo.` : ""
+        }
+PRESUPUESTO: haz como MUCHO 6 búsquedas web en total, luego DETENTE y sintetiza.`;
 
   const translationRule = isEs
     ? 'El contenido ya está en español: deja vacíos los campos "*Es" (titleEs, problemSummaryEs, appPitchEs, keyFeaturesEs, textEs).'
@@ -92,22 +117,18 @@ function buildPrompt(niche: string, filters: SearchFilters, ytBlock: string): st
 
   return `Investiga el nicho "${niche}" para oportunidades de apps.
 
-IDIOMA Y REGIÓN: busca en ${langName}, enfocándote en usuarios de ${regions}.
-FUENTES: busca ÚNICAMENTE en estas fuentes: ${sources}. Usa sus dominios en las búsquedas.${
-    ytBlock ? "\nPara YouTube NO uses búsqueda web: usa los COMENTARIOS REALES que te doy más abajo." : ""
-  }
-RECENCIA preferida: ${filters.recency}.
-
-PRESUPUESTO: haz como MUCHO 6 búsquedas web en total, luego DETENTE y sintetiza. Es válido que
-varias oportunidades citen los mismos hilos. Prioriza ENTREGAR JSON VÁLIDO sobre investigar de más.
-${ytBlock ? "\n" + ytBlock + "\n" : ""}
+IDIOMA Y REGIÓN: ${langName}, usuarios de ${regions}.
+${sourcesLine}
+RECENCIA preferida: ${filters.recency}. Prioriza ENTREGAR JSON VÁLIDO sobre investigar de más.
+${ytBlock ? "\n" + ytBlock + "\n" : ""}${asBlock ? "\n" + asBlock + "\n" : ""}
 ${translationRule}
 
-Agrupa lo que encuentres en 8-10 oportunidades distintas. Para cada una: title, problemSummary
-(1-2 frases), pain/frequency/marketGap (0-100), una idea de app iOS concreta (appName, appPitch,
-2-4 keyFeatures) y 1-3 citations (cita real, url real, platform = una de las fuentes, autor, context).
+Agrupa lo que encuentres en 6-8 oportunidades distintas (solo las respaldadas por quejas reales;
+menos está bien). Para cada una: title, problemSummary (1 frase corta), pain/frequency/marketGap
+(0-100), una idea de app iOS (appName, appPitch breve, 2-3 keyFeatures) y 1-2 citations (cita real,
+url real, platform = una de las fuentes, autor, context). Sé CONCISO para no truncar el JSON.
 
-Tras un máximo de 6 búsquedas, devuelve SOLO este objeto JSON, envuelto en un bloque \`\`\`json:
+Devuelve SOLO este objeto JSON, envuelto en un bloque \`\`\`json:
 
 \`\`\`json
 {
@@ -153,25 +174,37 @@ export async function analyzeWithClaudeAgent(
     else externalSignal.addEventListener("abort", () => controller.abort(), { once: true });
   }
 
-  // Pre-fetch REAL YouTube comments via the official API (the agent can't read them itself).
-  let ytBlock = "";
-  if (filters.sources.includes("youtube")) {
-    const comments = await collectYoutubeComments(niche, filters.language, controller.signal);
-    if (comments.length) ytBlock = formatYoutubeBlock(comments);
-  }
+  // Pre-fetch REAL data via official APIs (the agent can't read these itself).
+  const [ytComments, asReviews] = await Promise.all([
+    filters.sources.includes("youtube")
+      ? collectYoutubeComments(niche, filters.language, controller.signal)
+      : Promise.resolve([]),
+    filters.sources.includes("appstore")
+      ? collectAppStoreComplaints(niche, filters.language, controller.signal)
+      : Promise.resolve([]),
+  ]);
+  const ytBlock = ytComments.length ? formatYoutubeBlock(ytComments) : "";
+  const asBlock = asReviews.length ? formatAppStoreBlock(asReviews) : "";
+
+  // Si todas las fuentes seleccionadas ya están pre-recolectadas, no hace falta web:
+  // quitamos las herramientas para forzar síntesis directa (mucho más rápido).
+  const webSources = filters.sources.filter(
+    (s) => !((s === "youtube" && ytBlock) || (s === "appstore" && asBlock)),
+  );
+  const needsWeb = webSources.length > 0;
 
   let finalText = "";
   let lastAssistantText = "";
   try {
     for await (const message of query({
-      prompt: buildPrompt(niche, filters, ytBlock),
+      prompt: buildPrompt(niche, filters, ytBlock, asBlock),
       options: {
         model: process.env.PAINRADAR_AGENT_MODEL || "sonnet",
         systemPrompt: buildSystemPrompt(),
-        allowedTools: ["WebSearch", "WebFetch"],
+        allowedTools: needsWeb ? ["WebSearch", "WebFetch"] : [],
         permissionMode: "dontAsk",
         settingSources: [],
-        maxTurns: Number(process.env.PAINRADAR_AGENT_MAX_TURNS ?? 30),
+        maxTurns: needsWeb ? Number(process.env.PAINRADAR_AGENT_MAX_TURNS ?? 30) : 2,
         abortController: controller,
       },
     })) {
@@ -202,7 +235,8 @@ export async function analyzeWithClaudeAgent(
   let parsed;
   try {
     parsed = AgentOutputSchema.parse(extractJson(source));
-  } catch {
+  } catch (e) {
+    console.error("[Agent] no se pudo leer el JSON:", String(e).slice(0, 200));
     throw new Error(
       "El agente respondió pero no se pudo leer el resultado. Intenta de nuevo o cambia el nicho.",
     );
